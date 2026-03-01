@@ -1,0 +1,66 @@
+{
+  "retrieval": {
+    "recall_at_k": 0.7,
+    "mrr": 0.4,
+    "cases": [
+      {
+        "question": "Which email talks about budget approval and fiscal year planning?",
+        "hit": true,
+        "first_relevant_rank": 1
+      },
+      {
+        "question": "Find context related to a technical issue in production systems.",
+        "hit": false,
+        "first_relevant_rank": null
+      },
+      {
+        "question": "What emails mention a meeting request for next quarter strategy?",
+        "hit": true,
+        "first_relevant_rank": 2
+      },
+      {
+        "question": "Where is client feedback discussed, including strengths and improvements?",
+        "hit": true,
+        "first_relevant_rank": 1
+      },
+      {
+        "question": "Locate emails about a deadline extension request.",
+        "hit": false,
+        "first_relevant_rank": null
+      },
+      {
+        "question": "Which content is about training opportunities and professional development?",
+        "hit": true,
+        "first_relevant_rank": 3
+      },
+      {
+        "question": "Find vendor proposal discussions with pricing and terms.",
+        "hit": true,
+        "first_relevant_rank": 3
+      },
+      {
+        "question": "Which emails discuss annual performance review meetings?",
+        "hit": false,
+        "first_relevant_rank": null
+      },
+      {
+        "question": "Identify project update emails mentioning milestones and progress.",
+        "hit": true,
+        "first_relevant_rank": 3
+      },
+      {
+        "question": "Find team announcement messages about structure changes.",
+        "hit": true,
+        "first_relevant_rank": 2
+      }
+    ]
+  },
+  "generation": {
+    "cases_evaluated": 5,
+    "citation_line_ratio": 1.0
+  },
+  "notes": [
+    "Retrieval metrics use keyword-based relevance proxy over synthetic topics.",
+    "Generation metric is a lightweight groundedness proxy."
+  ]
+}

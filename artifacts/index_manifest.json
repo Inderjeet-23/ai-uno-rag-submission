@@ -1,0 +1,9 @@
+{
+  "email_count": 100,
+  "chunk_count": 100,
+  "embedding_model": "text-embedding-3-small",
+  "generation_model": "gpt-4o-mini",
+  "chunk_size_tokens": 220,
+  "chunk_overlap_tokens": 40,
+  "config_hash": "e09db00dcc895254bf63c2e78e087fd5c1f8d85397bc6630687b912891f0792a"
+}

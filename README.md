@@ -1,67 +1,156 @@
-# Mini RAG System
+# Mini RAG System (Email Corpus)
 
+This repository contains a complete Retrieval-Augmented Generation (RAG) implementation for the provided synthetic email dataset.
+
+## What Is Implemented
+
+- Document parsing for all `emails/email_*.txt`
+- Token-aware chunking with overlap
+- Embedding generation using OpenAI embeddings
+- Local FAISS cosine-similarity retrieval
+- Answer generation from retrieved context using OpenAI chat model
+- FastAPI interface for indexing and Q&A
+- Browser UI for index + question answering at `/`
+- Automated evaluation pipeline and report generation
+- Tests, Docker support, and a submit-check command
+- Offline fallback mode (deterministic embeddings + heuristic answers) when no API key is set
+
+No end-to-end RAG framework (LangChain/LlamaIndex) is used.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A[emails/*.txt] --> B[email_parser]
+    B --> C[chunker]
+    C --> D[OpenAI Embeddings]
+    D --> E[FAISS Index + metadata]
+    Q[User Question] --> QE[Query Embedding]
+    QE --> F[Retriever top-k]
+    E --> F
+    F --> G[Prompt Builder]
+    G --> H[OpenAI Generation]
+    H --> I[Answer + citations]
 ```
-Time: 75 Minutes
+
+## Chunking Strategy
+
+- Input text per email is normalized into:
+  - Subject
+  - From
+  - To
+  - Body
+- Chunk size: `220` tokens
+- Overlap: `40` tokens
+- Rationale:
+  - keeps each chunk semantically meaningful,
+  - preserves recall across sentence boundaries,
+  - controls token cost for retrieval + generation.
+
+## Embedding and Storage
+
+- Embedding model: `text-embedding-3-small`
+- Fallback when `OPENAI_API_KEY` is not provided: deterministic local hash-based embeddings
+- Similarity metric: cosine similarity via normalized vectors and `IndexFlatIP`
+- Stored artifacts:
+  - `artifacts/faiss.index`
+  - `artifacts/chunks.jsonl`
+  - `artifacts/index_manifest.json`
+
+## Retrieval and Generation
+
+- Query is embedded with the same embedding model.
+- Query embedding uses OpenAI when available, else deterministic local embedding.
+- Top-k chunks (default k=5) are retrieved from FAISS.
+- Prompt constrains model to context-grounded answers and asks for citations.
+- Generation uses OpenAI when available, else a heuristic summarizer from top retrieved chunks.
+- Response includes:
+  - answer text,
+  - citations (`email_id`, `chunk_id`, similarity score, subject),
+  - latency.
+
+## API
+
+Run the API and use:
+
+1. `GET /health` -> service status and index state
+2. `GET /config` -> runtime model/chunk config
+3. `POST /index` -> build and persist index from `emails/`
+4. `POST /ask` -> ask questions over indexed corpus
+
+Example request:
+
+```bash
+curl -X POST http://127.0.0.1:8000/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question":"Which emails discuss budget approvals?","top_k":5,"debug":false}'
 ```
 
-## Problem
+## Quality Evaluation Approach
 
-Build a Retrieval-Augmented Generation (RAG) pipeline that can process documents, retrieve relevant information, and generate answers to questions.
+`scripts/evaluate.py` generates:
 
-## Dataset
+- Retrieval metrics:
+  - Recall@5
+  - MRR
+- Generation proxy metric:
+  - citation-line ratio (only when `OPENAI_API_KEY` is set)
 
-A dataset of 100 synthetic emails is provided in the `emails/` directory. Each email contains:
-- Subject line
-- Sender and receiver information (from a pool of 200 unique people)
-- Body content (100+ words) with diverse topics including:
-  - Project updates
-  - Meeting requests
-  - Budget approvals
-  - Technical issues
-  - Client feedback
-  - Team announcements
-  - Deadline extensions
-  - Training opportunities
-  - Vendor proposals
-  - Performance reviews
+Outputs:
 
-Use this dataset to test your RAG system's ability to:
-- Chunk and process email documents
-- Retrieve relevant information based on queries
-- Generate accurate answers using the retrieved context
+- `artifacts/eval_results.json`
+- `artifacts/evaluation_report.md`
 
-## Requirements
+## Tradeoffs
 
-Your RAG system should implement:
+- `IndexFlatIP` is exact but memory-heavy at larger scales; acceptable for 100 emails.
+- Keyword-based relevance proxy in evaluation is lightweight and transparent, but not a gold-label benchmark.
+- OpenAI models maximize implementation quality quickly but require API access.
 
-1. **Document Chunking**
-   - Split documents into appropriate chunks
-   - Handle different document types and sizes
-   - Explain your chunking strategy
+## Local Setup (End-to-End)
 
-2. **Embedding**
-   - Generate embeddings for document chunks
-   - Choose an appropriate embedding model
-   - Store embeddings efficiently
+```bash
+cp .env.example .env
+# set OPENAI_API_KEY in .env for OpenAI-backed mode (optional for local fallback)
 
-3. **Retrieval**
-   - Implement similarity search to find relevant chunks
-   - Handle query embedding and matching
-   - Return top-k most relevant results
+make setup
+make index
+make test
+make eval
+make run
+```
 
-4. **Generation**
-   - Use retrieved context to generate answers
-   - Design effective prompts
-   - Integrate with a language model
+API available at `http://127.0.0.1:8000`.
+UI available at `http://127.0.0.1:8000/`.
 
-## Constraints
+You can explicitly test the RAG system end-to-end using this local website UI (`http://127.0.0.1:8000/`) by building the index and asking questions directly in the browser.
 
-- Do not use end-to-end RAG frameworks (e.g., LangChain, LlamaIndex)
-- Build core components yourself or use individual libraries
-- Document your design choices and tradeoffs
-- Explain your approach to quality evaluation
+## One-Command Submission Validation
 
-## Submission
+```bash
+make submit-check
+```
 
-- Create a public git repository containing your submission and share the repository link
-- Do not fork this repository or create pull requests
+This runs tests, rebuilds index, runs evaluation, and verifies required artifacts are present.
+
+## Docker
+
+```bash
+docker build -t mini-rag-email .
+docker run --rm -p 8000:8000 --env-file .env mini-rag-email
+```
+
+## Repository Contents
+
+- `app/` core pipeline modules
+- `scripts/build_index.py` offline indexing
+- `scripts/evaluate.py` evaluation + report generation
+- `tests/` unit and API tests
+- `artifacts/` generated index/eval outputs
+
+## Submission Checklist
+
+1. Ensure `make submit-check` passes.
+2. Commit all code and generated evaluation report.
+3. Push to a public Git repository.
+4. Share the repository URL.
